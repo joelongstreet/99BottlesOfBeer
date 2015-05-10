@@ -1,9 +1,16 @@
 // configuration options
 int ledSpeed    = 50;
+int loAlcValue  = 0;
+int hiAlcValue  = 150;
+
+// calibrate low alcohol readings
+int calibrateButton = 9;
 
 // alcohol capturing
-int alcoholSensor = A0;
-int captureButton = 8;
+int maxAlcoholVal   = 0;
+int alcoholSensor   = A0;
+int captureButton   = 8;
+boolean buttonDown  = false;
 
 // first shift register (A)
 int aLatchPin   = 3;
@@ -19,7 +26,7 @@ byte bLeds      = 0;
 
 
 void setup() 
-{ 
+{
   // establish button as an input
   pinMode(captureButton, INPUT);
 
@@ -38,25 +45,34 @@ void loop()
   updateShiftRegisterA();
   updateShiftRegisterB();
   
-  // when the button is pressed...
-  if(digitalRead(captureButton)){
-    // capture 100 alcohol values over the course of a
-    // single second and report the greatest value
-    int maxAlcoholValue = 0;
+  // allow calibration for the low alcohol value
+  if(digitalRead(calibrateButton)){
+    // take calibration over the course of a second
     for(int i=0; i<100; i++){
-      int alcoholValue = analogRead(alcoholSensor);
-      if(alcoholValue > maxAlcoholValue){
-        maxAlcoholValue = alcoholValue;
-      }
+      int val = analogRead(alcoholSensor);
+      if(val > loAlcValue) loAlcValue = val;
       delay(10);
     }
-    
+  }
+  
+  // when the button is pressed, start capturing alcohol values
+  if(digitalRead(captureButton)){
+    buttonDown = true;
+    int alcoholVal = analogRead(alcoholSensor);
+    if(alcoholVal > maxAlcoholVal){
+      maxAlcoholVal = alcoholVal;
+    }
+  } else if(buttonDown){
+    // when the button is released...
     // take the max alcohol value and map from potential low/high
-    // to number of LEDs. Then light
-    int ledCount = map(maxAlcoholValue, 5, 40, 0, 16);
+    // to number of LEDs
+    int ledCount = map(maxAlcoholVal, loAlcValue, hiAlcValue, 0, 16);
     if(ledCount < 0) ledCount = 1;
     lightLEDs(ledCount);
     
+    // reset
+    maxAlcoholVal = 0;
+    buttonDown = false;
     delay(2000);
     lightLEDs(0);
   }
